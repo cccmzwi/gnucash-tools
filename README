@@ -1,0 +1,14 @@
+csv2qif is a PHP script, that can take a CSV file from a online banking 
+page and transform it into a QIF file which then can be imported into 
+GnuCash. To do this, you need to provide the rules csv2qif works upon. 
+Take the rules.php file as a set of examples and extend or change them 
+to your needs.
+
+At the moment, the PHP script expects it input from the file input.csv 
+and writes to import.qif in the same directory. You may alternatively
+specify a first parameter with the infile (csv2qif alternateInfile.csv),
+the date will then be written to alternateInfile.csv.qif
+
+2009-10-29
+tokei, tokei@cccmz.de
+minor modifications by amenthes, amenthes@cccmz.de

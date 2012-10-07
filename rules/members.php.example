@@ -1,0 +1,86 @@
+<?php
+
+//// Wie die Regeln funktionieren:
+//
+// Alle Regelteile sind optional, es ist aber sinnvoll die Buchungen möglichst
+// präzise zu bestimmen. So fallen Änderungen und Abweichungen direkt auf, und das
+// Risiko der Fehl-Zuordnung wird minimiert.
+// Die meisten Argumente sind Regular Expressions, man kann also relativ frei matchen.
+// Die eingehenden Daten werden von *ALL CAPS* in *Erster Buchstabe Groß* konvertiert.
+// das müsst ihr bei der Regel-Definition beachten.
+//
+// neues Regel-Object, die Regel wird in der Konsole als "Test 123" gelistet
+// $rule = new Rule("Test 123");
+//
+// Absender der Buchung (kann bei Abgehenden Daueraufträgen wie Miete oder Strom entfallen)
+// $rule->setNameRule("/^Muster, Gabi$/");
+//
+// Betrag der Buchung ($ kommt von der RegEx, hat nichts mit dem Betrag zu tun!)
+// $rule->setAmountRule("/^99,95$/");
+//
+// Verwendungszweck suchen und Ersetzen (Protipp: mit Regex z.B. die Rechnungsnummer extrahieren und "mitnehmen")
+// In diesem Beispiel entfernen wir das Wort "Dauerauftrag", in Gnucash steht dann nur noch "Gabi Muster"
+// $rule->setMemoRule("/^Dauerauftrag Gabi Muster$/", "Gabi Muster");
+//
+// Welchem Gnucash-Konto schreiben wir das gut?
+// $rule->setAccountRule("", "Einkommen:Mitgliedsbeiträge:Muster, Gabi");
+// 
+// einfügen in die Regel-Liste
+// Ruler::addRule($rule);
+
+
+
+/////// Mitgliedsbeiträge /////////
+
+// Mitglied Lala Lulu
+$rule = new Rule("Mitgliedsbeitrag: Lulu, Lala");
+$rule->setNameRule("/^Lulu, Lala$/");
+$rule->setAmountRule("/^23,00$/");
+$rule->setMemoRule("/^Dauerauftrag Mitgliedsbeitrag Lala$/", "Lala Lulu");
+$rule->setAccountRule("", "Einkommen:Mitgliedsbeiträge:Lulu, Lala");
+Ruler::addRule($rule);
+
+// Mitglied Itzi Bitzi
+$rule = new Rule("Mitgliedsbeitrag: Bitzi, Itzi");
+$rule->setNameRule("/^Bitzi, Itzi$/");
+$rule->setAmountRule("/^10,00$/");
+$rule->setMemoRule("/^Mitgliedsbeitrag Bitzi$/", "Itzi Bitzi");
+$rule->setAccountRule("", "Einkommen:Mitgliedsbeiträge:Bitzi, Itzi");
+Ruler::addRule($rule);
+
+
+///////// weitere Regeln: ///////////
+
+// Miete Hackerspace (Besonderheit: Wir machen den Dauerauftrag, deswegen gibt's keine Name-Rule)
+$rule = new Rule("Miete Laborraum A38");
+// $rule->setNameRule("/^$/");
+$rule->setAmountRule("/^-123,45$/");
+$rule->setMemoRule("/^Dauerauftrag Miete$/", "Miete");
+$rule->setAccountRule("", "Aufwendungen:Wohnen:Miete");
+Ruler::addRule($rule);
+
+// Abschlag Strom
+$rule = new Rule("Abschlag Strom");
+//$rule->setNameRule("/^$/");
+$rule->setAmountRule("/^-100,01$/");
+$rule->setMemoRule("/^Dauerauftrag Kundennummer 12345$/i", "Abschlag Strom");
+$rule->setAccountRule("", "Aufwendungen:Wohnen:Nebenkosten:Strom");
+Ruler::addRule($rule);
+
+// Server (Besonderheit: Rechnungsnummer "RE123456" kommt in Gnucash an!)
+$rule = new Rule("Server");
+$rule->setNameRule("/^Schneller Server Inc.$/");
+$rule->setAmountRule("/^-25,00$/");
+$rule->setMemoRule("/^Lastschrift Rechnungsnr\.  (RE\d{6})$/", "Server Rechnung \\1");
+$rule->setAccountRule("", "Aufwendungen:Server");
+Ruler::addRule($rule);
+
+// Telefon (Besonderheit: Betrag variiert, MemoRule wird ohne $ gematcht, geht also noch weiter)
+$rule = new Rule("Telefon/Internet");
+$rule->setNameRule("/^T-Offline Ag$/");
+$rule->setAmountRule("/^-/");
+$rule->setMemoRule("/^Lastschrift Rechnung/", "Telefon Rechnung");
+$rule->setAccountRule("", "Aufwendungen:Telefon+Internet");
+Ruler::addRule($rule);
+
+?>

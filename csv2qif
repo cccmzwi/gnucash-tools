@@ -1,0 +1,2 @@
+#!/bin/bash
+php -e csv2qif.php
