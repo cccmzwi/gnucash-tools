@@ -1,5 +1,11 @@
 <?php
 
+if (!function_exists('mb_internal_encoding')) {
+	echo "please enable mb_internal_encoding in your php.ini. This is needed for utf-8. ";
+	echo "on windows, this line looks like this: extension=php_mbstring.dll and extension_dir = \"ext\"";
+	exit(1);
+}
+
 mb_internal_encoding('UTF-8');
 echo mb_internal_encoding();
 
