@@ -1,0 +1,8 @@
+# these should prevent you from accidentally check in personal data of anyone
+spendenquittungs-generator/spendenquittung/*.json
+spendenquittungs-generator/spendenquittung/*.pdf
+spendenquittungs-generator/spendenquittung/*.tex
+spendenquittungs-generator/spendenquittung/*.aux
+spendenquittungs-generator/spendenquittung/*.log
+csv 2 qif/rules/*.php
+**/*.gnucash
