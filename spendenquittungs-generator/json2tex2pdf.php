@@ -71,7 +71,9 @@ function applyTemplate($template, $data) {
 	$out = str_replace("1.000.000.000.000,00 Euro & Eine Fantastillionen Euro & 01.01.1900\n", $trns, $out);
 
 	// name & address
-	// TODO
+	$out = str_replace("ZuwenderName", $data->name, $out);
+	$out = str_replace("ZuwenderStrasse", $data->address, $out);
+	$out = str_replace("ZuwenderOrt", $data->city, $out);
 
 	return $out;
 }
