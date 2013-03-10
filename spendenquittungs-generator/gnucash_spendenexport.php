@@ -14,22 +14,41 @@ date_default_timezone_set('Europe/Berlin');
 $defaultYear = '2012';
 $MIN_TRANSACTION_DATE = DateTime::createFromFormat('Y-m-d H:i:s P', $defaultYear.'-01-01 00:00:00 +0100');
 $MAX_TRANSACTION_DATE = DateTime::createFromFormat('Y-m-d H:i:s P', $defaultYear.'-12-31 23:59:59 +0100');
-$filenameTemplate = './spendenquittung/' . $defaultYear . "%03d %s.json"; // running number, name
+$targetFolder = './spendenquittung/';
+$filenamePrefix = $defaultYear;
+$filenameTemplate = $targetFolder . $filenamePrefix . "%03d %s.json"; // running number, name
+$filenameParseRegex = "/^.{" . strlen($filenamePrefix) . "}(\d{3})\s/";
 
-// increase this, if you already have some Spendenquittungen for this year.
-$runningNumber = 0;
-
-$xml = simplexml_load_file("konto.gnucash");
+$xml = simplexml_load_file("../../finanz_gnucash/konto.gnucash");
 
 // getting the root ID for all member accounts
 $memberFeesRootAccountId = getAccountId('Mitgliedsbeiträge');
 // all member account IDs and Names
 $memberFeeAccountIds = getSubAccounts($memberFeesRootAccountId);
 
-// Going over that list member-by-member to generate its Spendenquittung
+// User Interaction
+asort($memberFeeAccountIds);
+$selectCounter = 0;
 foreach ($memberFeeAccountIds as $id => $name) {
-	$filename = filenameSanitazion(sprintf($filenameTemplate, ++$runningNumber, $name));
+	echo ++$selectCounter . ": $name\n";
+}
+print "Für wen soll die Spendenquittung sein? [1.." . count($memberFeeAccountIds) . "]: ";
+$entry = (int) trim(fgets(STDIN));
+$selectCounter = 0;
+foreach ($memberFeeAccountIds as $id => $name) {
+	if ($entry == ++$selectCounter) {
+		createDataFor($id, $name);
+	}
+}
+
+
+
+function createDataFor($id, $name) {
+	global $filenameTemplate, $MIN_TRANSACTION_DATE, $MAX_TRANSACTION_DATE;
+	$runningNumber = getNextFreeNumber();
+	$filename = filenameSanitazion(sprintf($filenameTemplate, $runningNumber, $name));
 	echo "$filename\n";
+
 	$trns = getTransactionsFromAccount($id);
 	$trns = filterTransactionsByDate($trns, $MIN_TRANSACTION_DATE, $MAX_TRANSACTION_DATE);
 	$trns = filterTransactionsByDescription($trns, '/\\(Ccc .{1,6}\\)/i'); // ccc-buchungen raus filtern
@@ -40,6 +59,8 @@ foreach ($memberFeeAccountIds as $id => $name) {
 		fwrite($file, json_encode(array(
 			"runningNumber" => $runningNumber,
 			"name" => $name,
+			"address" => "-Straße-",
+			"city" => "-Stadt-",
 			"date" => date('d.m.Y'),
 			"transactions" => $trns
 		)));
@@ -191,6 +212,18 @@ function valueToCents($amount)
 	return $value;
 }
 
+function getNextFreeNumber() {
+	global $targetFolder, $filenameParseRegex;
+	$highest = 0;
+	$handle = opendir($targetFolder);
+	while (false !== ($file = readdir($handle))) {
+		preg_match($filenameParseRegex, $file, $match);
+		@$current = (int) $match[1];
+		$highest = max($current, $highest);
+	}
+
+	return $highest + 1;
+}
 
 /**
  * PHP 5.x can't handle utf8 strings in filenames.
