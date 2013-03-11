@@ -9,6 +9,12 @@
  */
 error_reporting(E_ALL);
 date_default_timezone_set('Europe/Berlin');
+if (!function_exists('mb_internal_encoding')) {
+	echo "please enable mb_internal_encoding in your php.ini. This is needed for utf-8. ";
+	echo "on windows, this line looks like this: extension=php_mbstring.dll and extension_dir = \"ext\"";
+	exit(1);
+}
+mb_internal_encoding('UTF-8');
 
 $vorlage = file_get_contents('./vorlage/geldzuwendung.tex');
 $workpath = 'spendenquittung/';
@@ -21,16 +27,19 @@ foreach ($dir as $file) {
 		$basename = preg_replace('/\\.json$/i', '', $file);
 		$texfilename = $workpath . $basename . '.tex';
 		if (file_exists($texfilename)) {
-			echo "This Texfile already exists. Skipping $texfilename";
+			echo "This Texfile already exists. Skipping $texfilename\n";
 			continue;
 		}
 
 		$data = json_decode(file_get_contents($workpath . $file));
+		if ($data == null) {
+			die("there's something wrong with the data in $file\n");
+		}
 		$intermediate = fopen($texfilename, 'w');
 		fwrite($intermediate, applyTemplate($vorlage, $data));
 		fclose($intermediate);
 
-		chdir('vorlage'); // otherwise the assets in the Vorlage will not be available.
+		chdir('spendenquittung'); // otherwise the assets in the Vorlage will not be available.
 		system('pdflatex -output-directory="../' . $workpath . '" "../' . $texfilename . '"');
 		chdir('..');
 	}
@@ -63,6 +72,7 @@ function applyTemplate($template, $data) {
 		'40.00' => 'Vierzig Euro',
 		'46.00' => 'Sechsundvierzig Euro',
 		'90.00' => 'Neunzig Euro',
+		'200.00' => 'Zweihundert Euro',
 		'264.00' => 'Zweihundertvierundsechzig Euro'
 	);
 	foreach($data->transactions as $transaction) {

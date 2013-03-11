@@ -63,7 +63,7 @@ function createDataFor($id, $name) {
 			"city" => "-Stadt-",
 			"date" => date('d.m.Y'),
 			"transactions" => $trns
-		)));
+		), JSON_PRETTY_PRINT)); // requires PHP 5.4 - if you don't have it, just take JSON_PRETTY_PRINT out.
 		fclose($file);
 	} else {
 		exit(1);
