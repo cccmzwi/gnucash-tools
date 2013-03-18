@@ -47,7 +47,10 @@ foreach ($dir as $file) {
 
 function applyTemplate($template, $data) {
 	// date
-	$out = str_replace("55.66.7777", $data->date, $template);
+	$out = str_replace("DatumDerBescheinigung", $data->date, $template);
+
+	// number
+	$out = str_replace("SpendenQuittungsNummer", $data->runningNumber, $out);
 
 	// amounts
 	$trns = '';

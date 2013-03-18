@@ -8,16 +8,18 @@
  * Released under MIT License (2013)
  */
 error_reporting(E_ALL);
+mb_internal_encoding('utf-8');
 date_default_timezone_set('Europe/Berlin');
 
 /** CONFIGURE THESE!!! */
+$CONSOLE_ENCODING = 'cp1252';
 $defaultYear = '2012';
 $MIN_TRANSACTION_DATE = DateTime::createFromFormat('Y-m-d H:i:s P', $defaultYear.'-01-01 00:00:00 +0100');
 $MAX_TRANSACTION_DATE = DateTime::createFromFormat('Y-m-d H:i:s P', $defaultYear.'-12-31 23:59:59 +0100');
 $targetFolder = './spendenquittung/';
 $filenamePrefix = $defaultYear;
-$filenameTemplate = $targetFolder . $filenamePrefix . "%03d %s.json"; // running number, name
-$filenameParseRegex = "/^.{" . strlen($filenamePrefix) . "}(\d{3})\s/";
+$filenameTemplate = $targetFolder . $filenamePrefix . "%03d %s.json"; // year, running number, name
+$filenameParseRegex = "/^(.{" . strlen($filenamePrefix) . "})(\d{3})\s(.*)\.json/"; // matches in 1, 2, 3
 
 $xml = simplexml_load_file("../../finanz_gnucash/konto.gnucash");
 
@@ -44,23 +46,43 @@ foreach ($memberFeeAccountIds as $id => $name) {
 
 
 function createDataFor($id, $name) {
-	global $filenameTemplate, $MIN_TRANSACTION_DATE, $MAX_TRANSACTION_DATE;
-	$runningNumber = getNextFreeNumber();
+	global $filenameTemplate, $defaultYear, $MIN_TRANSACTION_DATE, $MAX_TRANSACTION_DATE, $CONSOLE_ENCODING;
+	$filemode = 'x'; // x won't overwrite an existing file.
+	$runningNumber = findExistingNumber($defaultYear, filenameSanitazion($name));
+	if ($runningNumber) {
+		print "Existierende Datei überschreiben? [yN]: ";
+		if (trim(fgets(STDIN)) === 'y') {
+			$filemode = 'w'; // W is dangerous. Will overwrite file.
+		} else {
+			$runningNumber = false;
+			echo "Eine WEITERE Spendenquittung unter anderer Nummer wird erstellt.\n";
+		}
+	}
+	if (!$runningNumber) {
+		$runningNumber = getNextFreeNumber();
+	}
 	$filename = filenameSanitazion(sprintf($filenameTemplate, $runningNumber, $name));
 	echo "$filename\n";
 
+	// getting additional info
+	print "Adress-Information Zeile 1: ";
+	$address = mb_convert_encoding(trim(fgets(STDIN)),'utf8', $CONSOLE_ENCODING);
+	print "Adress-Information Zeile 2: ";
+	$city = mb_convert_encoding(trim(fgets(STDIN)),'utf8', $CONSOLE_ENCODING);
+
+	
 	$trns = getTransactionsFromAccount($id);
 	$trns = filterTransactionsByDate($trns, $MIN_TRANSACTION_DATE, $MAX_TRANSACTION_DATE);
 	$trns = filterTransactionsByDescription($trns, '/\\(Ccc .{1,6}\\)/i'); // ccc-buchungen raus filtern
 	$trns = convertForExport($trns);
 
-	$file = fopen($filename, 'x'); // x won't overwrite an existing file.
+	$file = fopen($filename, $filemode);
 	if ($file) {
 		fwrite($file, json_encode(array(
 			"runningNumber" => $runningNumber,
 			"name" => $name,
-			"address" => "-Straße-",
-			"city" => "-Stadt-",
+			"address" => $address,
+			"city" => $city,
 			"date" => date('d.m.Y'),
 			"transactions" => $trns
 		), JSON_PRETTY_PRINT)); // requires PHP 5.4 - if you don't have it, just take JSON_PRETTY_PRINT out.
@@ -212,18 +234,38 @@ function valueToCents($amount)
 	return $value;
 }
 
+function findExistingNumber($searchPrefix, $sanitizedName) {
+	global $targetFolder, $filenameParseRegex;
+	$handle = opendir($targetFolder);
+	while (false !== ($file = readdir($handle))) {
+		preg_match($filenameParseRegex, $file, $match);
+		if ($match) {
+			@$prefix = $match[1];
+			@$number = (int) $match[2];
+			@$name = $match[3];
+			if ($prefix == $searchPrefix && $name == $sanitizedName) {
+				echo "Es wurde bereits eine Spendenquittung angelegt: ".$file."\n";
+				return $number;
+			}
+		}
+	}
+
+	return false;
+}
+
 function getNextFreeNumber() {
 	global $targetFolder, $filenameParseRegex;
 	$highest = 0;
 	$handle = opendir($targetFolder);
 	while (false !== ($file = readdir($handle))) {
 		preg_match($filenameParseRegex, $file, $match);
-		@$current = (int) $match[1];
+		@$current = (int) $match[2];
 		$highest = max($current, $highest);
 	}
 
 	return $highest + 1;
 }
+
 
 /**
  * PHP 5.x can't handle utf8 strings in filenames.
